@@ -1,0 +1,99 @@
+name: build-linux-zen-atomisp
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.decide.outputs.should_build }}
+      upstream_version: ${{ steps.upstream.outputs.version }}
+      expected_tag: ${{ steps.decide.outputs.expected_tag }}
+    steps:
+      - name: Legge versione ufficiale linux-zen
+        id: upstream
+        run: |
+          VER=$(curl -fsSL https://archlinux.org/packages/extra/x86_64/linux-zen/json/ | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")
+          echo "Upstream: $VER"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+      - name: Legge ultima Release di questa repo
+        id: built
+        run: |
+          TAG=$(curl -fsSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/releases/latest \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('tag_name','none'))" 2>/dev/null || echo none)
+          echo "Ultima release: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Decide se compilare
+        id: decide
+        run: |
+          UPSTREAM="${{ steps.upstream.outputs.version }}"
+          TAG="${{ steps.built.outputs.tag }}"
+          EXPECTED="v${UPSTREAM}-atomisp1"
+          echo "expected_tag=$EXPECTED" >> "$GITHUB_OUTPUT"
+          if [ "$TAG" = "$EXPECTED" ]; then
+            echo "Gia compilato, skip."
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Nuova versione, compilo $EXPECTED"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    env:
+      UPSTREAM_VERSION: ${{ needs.check.outputs.upstream_version }}
+      EXPECTED_TAG: ${{ needs.check.outputs.expected_tag }}
+    steps:
+      - name: Spazio disco iniziale
+        run: df -h
+
+      - name: Installa deps build
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git ccache python sudo
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+      - uses: actions/checkout@v4
+        with:
+          path: repo-files
+
+      - name: Prepara PKGBUILD rinominato
+        run: |
+          cp repo-files/atomisp.conf .
+          cp repo-files/prepare-pkgbuild.sh .
+          chmod +x prepare-pkgbuild.sh
+          ./prepare-pkgbuild.sh
+          ls -la upstream-linux-zen/
+          grep -E "pkgbase|pkgname" upstream-linux-zen/PKGBUILD | head
+
+      - name: Compila (come builder, makepkg vieta root)
+        run: |
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          cd upstream-linux-zen
+          sudo -u builder MAKEFLAGS="-j$(nproc)" makepkg -s --noconfirm --noprogressbar
+          ls -lh ./*.pkg.tar.zst
+
+      - name: Crea Release con kernel compilato
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.EXPECTED_TAG }}
+          name: "linux-zen-atomisp ${{ env.UPSTREAM_VERSION }}"
+          body: |
+            Build automatica di linux-zen ${{ env.UPSTREAM_VERSION }} con AtomISP + OV8835.
+            Installazione: vedi README / ISTRUZIONI.txt.
+            File: linux-zen-atomisp-*.pkg.tar.zst + linux-zen-atomisp-headers-*.pkg.tar.zst
+            Firmware manuale: /lib/firmware/shisp_2401a0_v21.bin
+          files: upstream-linux-zen/*.pkg.tar.zst
