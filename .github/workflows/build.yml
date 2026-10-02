@@ -19,7 +19,7 @@ jobs:
       - name: Legge versione ufficiale linux-zen
         id: upstream
         run: |
-          VER=$(curl -fsSL https://archlinux.org/packages/extra/x86_64/linux-zen/json/ | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")
+          VER=$(curl -fsSL https://archlinux.org/packages/extra/x86_64/linux-zen/json/ | python3 -c 'import sys, json; d = json.load(sys.stdin); ep = d.get("epoch") or 0; print((f"{ep}:" if ep else "") + d["pkgver"] + "-" + d["pkgrel"])')
           echo "Upstream: $VER"
           echo "version=$VER" >> "$GITHUB_OUTPUT"
 
