@@ -79,6 +79,20 @@ jobs:
           ls -la upstream-linux-zen/
           grep -E "pkgbase|pkgname" upstream-linux-zen/PKGBUILD | head
 
+      - name: Importa chiavi PGP upstream
+        run: |
+          # validpgpkeys nel PKGBUILD elenca le chiavi che firmano i tarball del
+          # kernel, ma non sono in archlinux-keyring: makepkg fallirebbe con
+          # "unknown public key". Le importiamo dalla dir keys/pgp/ del packaging.
+          # makepkg gira come 'builder', quindi il keyring deve essere il suo.
+          install -d -m 700 -o builder -g builder /home/builder/.gnupg
+          for k in upstream-linux-zen/keys/pgp/*.asc; do
+            echo "importo $(basename "$k")"
+            sudo -u builder gpg --batch --quiet --import "$k"
+          done
+          echo "--- chiavi nel keyring di builder ---"
+          sudo -u builder gpg --batch --list-keys --keyid-format LONG | grep -E '^(pub|uid)' | head -20
+
       - name: Compila (come builder, makepkg vieta root)
         run: |
           chown -R builder:builder "$GITHUB_WORKSPACE"
