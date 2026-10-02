@@ -27,9 +27,11 @@ for f in linux-zen.preset 70-linux-zen.preset linux-zen.install; do
   fi
 done
 # riferimenti interni ai path boot/preset (escludi URL http)
+# `|| true`: grep esce 1 se non trova nulla e, con `set -e` + `pipefail`,
+# ucciderebbe lo script. 2>/dev/null nasconde solo stderr, non l'exit code.
 grep -rl 'linux-zen' --include='*.install' --include='*.preset' . 2>/dev/null | while read -r f; do
   sed -i 's/linux-zen/linux-zen-atomisp/g' "$f"
-done
+done || true
 # ripristina URL upstream zen-kernel se toccati per sbaglio
 sed -i 's#github.com/linux-zen-atomisp/zen-kernel#github.com/zen-kernel/zen-kernel#g' PKGBUILD
 sed -i 's#zen-kernel/linux-zen-atomisp#zen-kernel/zen-kernel#g' PKGBUILD
