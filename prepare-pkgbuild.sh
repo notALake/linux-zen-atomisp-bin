@@ -37,11 +37,20 @@ sed -i 's#github.com/linux-zen-atomisp/zen-kernel#github.com/zen-kernel/zen-kern
 sed -i 's#zen-kernel/linux-zen-atomisp#zen-kernel/zen-kernel#g' PKGBUILD
 
 echo "==> Applico fragment atomisp.conf al config"
-if [ ! -f config ]; then
-  echo "ERRORE: file 'config' non trovato in $WORKDIR, PKGBUILD upstream cambiato"
+# upstream chiama il file config.$CARCH (es. config.x86_64) e PKGBUILD fa
+# `cp ../config.$CARCH .config`, quindi il file DEVE stare in $WORKDIR con quel nome.
+# CARCH non e' ancora definito (makepkg non e' partito): default x86_64.
+: "${CARCH:=x86_64}"
+if [ -f "config.$CARCH" ]; then
+  CFGFILE="config.$CARCH"
+elif [ -f config ]; then
+  CFGFILE=config
+else
+  echo "ERRORE: nessun config.$CARCH ne config trovato in $WORKDIR, PKGBUILD upstream cambiato"
   ls -la
   exit 1
 fi
+echo "    config da patchare: $CFGFILE"
 cp ../atomisp.conf ./atomisp.conf
 # Applica riga per riga: gestisce sia X=m sia "# X is not set"
 while IFS= read -r line || [ -n "$line" ]; do
@@ -49,20 +58,20 @@ while IFS= read -r line || [ -n "$line" ]; do
   if [[ "$line" =~ ^#\ CONFIG_.*\ is\ not\ set$ ]]; then
     sym=$(echo "$line" | awk '{print $2}' | cut -d= -f1)
     # rimuovi eventuale riga esistente e aggiungi disabilitazione
-    sed -i "/^${sym}=/d" config
-    sed -i "/^# ${sym} is not set/d" config
-    echo "$line" >> config
+    sed -i "/^${sym}=/d" "$CFGFILE"
+    sed -i "/^# ${sym} is not set/d" "$CFGFILE"
+    echo "$line" >> "$CFGFILE"
   elif [[ "$line" =~ ^CONFIG_ ]]; then
     sym=$(echo "$line" | cut -d= -f1)
     val=$(echo "$line" | cut -d= -f2-)
-    sed -i "/^${sym}=/d" config
-    sed -i "/^# ${sym} is not set/d" config
-    echo "${sym}=${val}" >> config
+    sed -i "/^${sym}=/d" "$CFGFILE"
+    sed -i "/^# ${sym} is not set/d" "$CFGFILE"
+    echo "${sym}=${val}" >> "$CFGFILE"
   fi
 done < atomisp.conf
 rm atomisp.conf
 
 echo "==> config patchato, verifica:"
-grep -E "ATOMISP" config || true
+grep -E "ATOMISP" "$CFGFILE" || true
 
 echo "OK. Ora makepkg -s gestira olddefconfig in prepare()."
