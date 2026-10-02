@@ -74,4 +74,32 @@ rm atomisp.conf
 echo "==> config patchato, verifica:"
 grep -E "ATOMISP" "$CFGFILE" || true
 
+# makepkg valida i checksum delle fonti PRIMA di prepare(), e noi abbiamo appena
+# modificato $CFGFILE: il checksum in b2sums_x86_64 non corrisponde piu'.
+# Gli array checksum devono restare allineati 1:1 con source[], quindi NON
+# cancelliamo la voce (romperebbe gli indici): ricalcoliamo l'hash del file
+# patchato, cosi' l'integrita' continua a essere verificata.
+if [ "$CFGFILE" = "config.$CARCH" ]; then
+  echo "==> Ricalcolo i checksum di $CFGFILE nel PKGBUILD"
+  for arr in b2sums_x86_64 sha256sums_x86_64; do
+    grep -q "^${arr}=(" PKGBUILD || continue
+    case "$arr" in
+      b2sums_x86_64)     tool=b2sum     ;;
+      sha256sums_x86_64) tool=sha256sum ;;
+    esac
+    if command -v "$tool" >/dev/null 2>&1; then
+      NEWHASH=$("$tool" "$CFGFILE" | cut -d' ' -f1)
+    else
+      # tool assente: SKIP e' un valore accettato da makepkg
+      NEWHASH=SKIP
+      echo "    $tool non disponibile, uso SKIP per $arr"
+    fi
+    # l'array per arch qui contiene una sola entry (il config)
+    sed -i "s#^${arr}=(.*#${arr}=('${NEWHASH}')#" PKGBUILD
+    echo "    $arr = $NEWHASH"
+  done
+else
+  echo "AVVISO: $CFGFILE non e' config.$CARCH, checksum non aggiornato"
+fi
+
 echo "OK. Ora makepkg -s gestira olddefconfig in prepare()."
