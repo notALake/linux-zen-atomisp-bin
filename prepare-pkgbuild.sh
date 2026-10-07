@@ -74,6 +74,43 @@ rm atomisp.conf
 echo "==> config patchato, verifica:"
 grep -E "ATOMISP" "$CFGFILE" || true
 
+echo "==> Aggiungo patch camera (patches/*.patch) a source[] del PKGBUILD"
+# Il PKGBUILD upstream ha un loop in prepare() che applica con 'patch -Np1'
+# ogni file *.patch elencato in source[]. Appendo i nostri patch in coda
+# (dopo il patch ufficiale zen, contro cui sono generati) e li copio nella
+# dir del PKGBUILD. Checksum: 'SKIP' (file locali, non scaricati).
+cp ../patches/*.patch .
+python3 - <<'PYEOF'
+import re, glob
+
+patches = sorted(glob.glob('0*.patch'))
+assert len(patches) == 3, f"attesi 3 patch, trovati {len(patches)}: {patches}"
+
+src = open('PKGBUILD').read()
+
+# 1) source(): nomi dei patch prima della ')' che chiude l'array
+m = re.search(r"\)\nsource_x86_64=", src)
+assert m, "chiusura di source() non trovata"
+entries = '\n'.join(f'  {p}' for p in patches)
+src = src[:m.start()] + entries + '\n' + src[m.start():]
+
+# 2) b2sums(): 'SKIP' in coda (stessa posizione dei patch in source)
+m = re.search(r"\)\nb2sums_x86_64=", src)
+assert m, "chiusura di b2sums() non trovata"
+skip_b = '\n' + '\n'.join(["        'SKIP'"] * len(patches))
+src = src[:m.start()] + skip_b + src[m.start():]
+
+# 3) sha256sums(): idem
+m = re.search(r"\)\n\nexport KBUILD_BUILD_HOST=", src)
+assert m, "chiusura di sha256sums() non trovata"
+skip_s = '\n' + '\n'.join(["            'SKIP'"] * len(patches))
+src = src[:m.start()] + skip_s + src[m.start():]
+
+open('PKGBUILD', 'w').write(src)
+print("    source[] += " + ', '.join(patches))
+print("    checksum += 'SKIP' x%d (b2sums + sha256sums)" % len(patches))
+PYEOF
+
 # makepkg valida i checksum delle fonti PRIMA di prepare(), e noi abbiamo appena
 # modificato $CFGFILE: il checksum in b2sums_x86_64 non corrisponde piu'.
 # Gli array checksum devono restare allineati 1:1 con source[], quindi NON

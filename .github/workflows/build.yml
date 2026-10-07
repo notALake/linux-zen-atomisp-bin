@@ -38,7 +38,7 @@ jobs:
         run: |
           UPSTREAM="${{ steps.upstream.outputs.version }}"
           TAG="${{ steps.built.outputs.tag }}"
-          EXPECTED="v${UPSTREAM}-atomisp1"
+          EXPECTED="v${UPSTREAM}-atomisp2"
           echo "expected_tag=$EXPECTED" >> "$GITHUB_OUTPUT"
           if [ "$TAG" = "$EXPECTED" ]; then
             echo "Gia compilato, skip."
@@ -106,7 +106,8 @@ jobs:
           tag_name: ${{ env.EXPECTED_TAG }}
           name: "linux-zen-atomisp ${{ env.UPSTREAM_VERSION }}"
           body: |
-            Build automatica di linux-zen ${{ env.UPSTREAM_VERSION }} con AtomISP + OV8835.
+            Build automatica di linux-zen ${{ env.UPSTREAM_VERSION }} con AtomISP abilitato
+            (driver camera MT9M114 + patch affidabilita'/rotazione: vedi patches/).
             Installazione: vedi README / ISTRUZIONI.txt.
             File: linux-zen-atomisp-*.pkg.tar.zst + linux-zen-atomisp-headers-*.pkg.tar.zst
             Firmware manuale: /lib/firmware/shisp_2401a0_v21.bin
