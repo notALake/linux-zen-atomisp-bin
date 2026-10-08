@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# evita doppie build in gara (cron + manuale): la nuova annulla la vecchia
+concurrency:
+  group: build-linux-zen-atomisp
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
