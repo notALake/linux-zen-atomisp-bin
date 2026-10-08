@@ -1,0 +1,25 @@
+--- a/drivers/staging/media/atomisp/pci/atomisp_cmd.c
++++ b/drivers/staging/media/atomisp/pci/atomisp_cmd.c
+@@ -3803,10 +3803,21 @@
+ 	u32 padding_w, padding_h;
+ 	int ret;
+ 
++	/*
++	 * The ISP firmware writes the chroma planes (and the chroma pairs
++	 * of the interleaved formats) in Cr,Cb order, regardless of the
++	 * requested output format. Report the format matching the actual
++	 * memory layout, so that userspace gets correct colors.
++	 */
++	if (f->pixelformat == V4L2_PIX_FMT_YUV420)
++		f->pixelformat = V4L2_PIX_FMT_YVU420;
++	else if (f->pixelformat == V4L2_PIX_FMT_NV12)
++		f->pixelformat = V4L2_PIX_FMT_NV21;
++
+ 	fmt = atomisp_get_format_bridge(f->pixelformat);
+ 	/* Currently, raw formats are broken!!! */
+ 	if (!fmt || fmt->sh_fmt == IA_CSS_FRAME_FORMAT_RAW) {
+-		f->pixelformat = V4L2_PIX_FMT_YUV420;
++		f->pixelformat = V4L2_PIX_FMT_YVU420;
+ 
+ 		fmt = atomisp_get_format_bridge(f->pixelformat);
+ 		if (!fmt)

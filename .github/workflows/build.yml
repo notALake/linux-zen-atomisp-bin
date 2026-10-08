@@ -74,6 +74,7 @@ jobs:
         run: |
           cp repo-files/atomisp.conf .
           cp repo-files/prepare-pkgbuild.sh .
+          cp repo-files/patches/*.patch .
           chmod +x prepare-pkgbuild.sh
           ./prepare-pkgbuild.sh
           ls -la upstream-linux-zen/
