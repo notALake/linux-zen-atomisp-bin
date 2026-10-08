@@ -15,6 +15,7 @@ jobs:
       should_build: ${{ steps.decide.outputs.should_build }}
       upstream_version: ${{ steps.upstream.outputs.version }}
       expected_tag: ${{ steps.decide.outputs.expected_tag }}
+      patchset: ${{ steps.decide.outputs.patchset }}
     steps:
       - name: Legge versione ufficiale linux-zen
         id: upstream
@@ -38,8 +39,12 @@ jobs:
         run: |
           UPSTREAM="${{ steps.upstream.outputs.version }}"
           TAG="${{ steps.built.outputs.tag }}"
-          EXPECTED="v${UPSTREAM}-atomisp4"
+          # numero di patchset corrente (patch 0001..000N): usato nel tag
+          # E nel pkgrel del pacchetto (1.N) cosi' pacman vede gli aggiornamenti
+          PATCHSET=4
+          EXPECTED="v${UPSTREAM}-atomisp${PATCHSET}"
           echo "expected_tag=$EXPECTED" >> "$GITHUB_OUTPUT"
+          echo "patchset=$PATCHSET" >> "$GITHUB_OUTPUT"
           if [ "$TAG" = "$EXPECTED" ]; then
             echo "Gia compilato, skip."
             echo "should_build=false" >> "$GITHUB_OUTPUT"
@@ -56,6 +61,7 @@ jobs:
     env:
       UPSTREAM_VERSION: ${{ needs.check.outputs.upstream_version }}
       EXPECTED_TAG: ${{ needs.check.outputs.expected_tag }}
+      PATCHSET: ${{ needs.check.outputs.patchset }}
     steps:
       - name: Spazio disco iniziale
         run: df -h

@@ -74,6 +74,10 @@ rm atomisp.conf
 echo "==> config patchato, verifica:"
 grep -E "ATOMISP" "$CFGFILE" || true
 
+echo "==> pkgrel con patchset: 1.${PATCHSET:-0} (cosi' pacman distingue le release)"
+sed -i -E "s/^pkgrel=.*/pkgrel=1.${PATCHSET:-0}/" PKGBUILD
+grep -E "^pkg(rel|ver)" PKGBUILD
+
 echo "==> Aggiungo patch camera a source[] del PKGBUILD"
 # Il PKGBUILD upstream ha un loop in prepare() che applica con 'patch -Np1'
 # ogni file *.patch elencato in source[]. Appendo i nostri patch in coda

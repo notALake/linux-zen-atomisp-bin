@@ -15,8 +15,8 @@
 +		struct v4l2_subdev_frame_interval fi = { };
 +		int ret;
 +
-+		ret = v4l2_subdev_call(isp->inputs[asd->input_curr].csi_remote_source,
-+				       video, g_frame_interval, &fi);
++		ret = v4l2_subdev_call_state_active(isp->inputs[asd->input_curr].csi_remote_source,
++						    pad, get_frame_interval, &fi);
 +		if (!ret && fi.interval.denominator)
 +			parm->parm.capture.timeperframe = fi.interval;
 +		else
