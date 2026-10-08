@@ -38,7 +38,7 @@ jobs:
         run: |
           UPSTREAM="${{ steps.upstream.outputs.version }}"
           TAG="${{ steps.built.outputs.tag }}"
-          EXPECTED="v${UPSTREAM}-atomisp2"
+          EXPECTED="v${UPSTREAM}-atomisp3"
           echo "expected_tag=$EXPECTED" >> "$GITHUB_OUTPUT"
           if [ "$TAG" = "$EXPECTED" ]; then
             echo "Gia compilato, skip."
