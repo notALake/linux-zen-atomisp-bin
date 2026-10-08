@@ -74,12 +74,15 @@ rm atomisp.conf
 echo "==> config patchato, verifica:"
 grep -E "ATOMISP" "$CFGFILE" || true
 
-echo "==> Aggiungo patch camera (patches/*.patch) a source[] del PKGBUILD"
+echo "==> Aggiungo patch camera a source[] del PKGBUILD"
 # Il PKGBUILD upstream ha un loop in prepare() che applica con 'patch -Np1'
 # ogni file *.patch elencato in source[]. Appendo i nostri patch in coda
 # (dopo il patch ufficiale zen, contro cui sono generati) e li copio nella
 # dir del PKGBUILD. Checksum: 'SKIP' (file locali, non scaricati).
-cp ../patches/*.patch .
+# I patch possono trovarsi sparsi nella dir padre oppure dentro patches/
+for p in ../*.patch ../patches/*.patch; do
+  [ -f "$p" ] && cp "$p" . || true
+done
 python3 - <<'PYEOF'
 import re, glob
 
