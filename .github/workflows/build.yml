@@ -46,7 +46,7 @@ jobs:
           TAG="${{ steps.built.outputs.tag }}"
           # numero di patchset corrente (patch 0001..000N): usato nel tag
           # E nel pkgrel del pacchetto (1.N) cosi' pacman vede gli aggiornamenti
-          PATCHSET=4
+          PATCHSET=5
           EXPECTED="v${UPSTREAM}-atomisp${PATCHSET}"
           echo "expected_tag=$EXPECTED" >> "$GITHUB_OUTPUT"
           echo "patchset=$PATCHSET" >> "$GITHUB_OUTPUT"
