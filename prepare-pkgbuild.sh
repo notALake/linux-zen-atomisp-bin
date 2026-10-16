@@ -91,7 +91,7 @@ python3 - <<'PYEOF'
 import re, glob
 
 patches = sorted(glob.glob('0*.patch'))
-assert len(patches) == 9, f"attesi 9 patch, trovati {len(patches)}: {patches}"
+assert len(patches) == 15, f"attesi 15 patch, trovati {len(patches)}: {patches}"
 
 src = open('PKGBUILD').read()
 

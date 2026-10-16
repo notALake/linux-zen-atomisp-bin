@@ -1,6 +1,6 @@
 --- a/drivers/staging/media/atomisp/pci/atomisp_ioctl.c
 +++ b/drivers/staging/media/atomisp/pci/atomisp_ioctl.c
-@@ -567,31 +567,31 @@
+@@ -567,31 +567,39 @@
  	struct atomisp_device *isp = video_get_drvdata(vdev);
  	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
  	struct atomisp_input_subdev *input = &isp->inputs[asd->input_curr];
@@ -12,7 +12,9 @@
 -		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
 -	};
 -	struct v4l2_subdev_state *act_sd_state;
-+	struct v4l2_subdev_frame_interval fi = { };
++	struct v4l2_subdev_frame_interval fi = {
++		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
++	};
  	int ret;
  
  	if (!input->sensor)
@@ -27,10 +29,16 @@
 +	 * Forwarding the enumeration to the sensor's enum_frame_interval
 +	 * fails with -EINVAL because the sensor expects its own mbus code
 +	 * (UYVY) while we pass the atomisp input format table's code.
-+	 * Instead, return the sensor's current frame interval (the same
-+	 * value reported by g_parm) as the single available rate.
++	 * Instead, report the frame interval from csi_remote_source: that
++	 * is the subdev which actually implements get_frame_interval (for
++	 * the mt9m114 it is the "ifp" subdev, not the "pixel array" one),
++	 * and the same source g_parm/s_parm use. qv4l2 fills and enables
++	 * its frame rate selector from ENUM_FRAMEINTERVALS, so this must
++	 * succeed. 'which' must also be set: the subdev core sets it to
++	 * ACTIVE for the subdev device node ioctl, but not for a direct
++	 * subdev call, and the mt9m114 returns -EINVAL for TRY.
 +	 */
-+	ret = v4l2_subdev_call_state_active(input->sensor,
++	ret = v4l2_subdev_call_state_active(input->csi_remote_source,
 +					    pad, get_frame_interval, &fi);
  	if (ret)
  		return ret;
